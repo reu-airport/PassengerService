@@ -1,6 +1,8 @@
 ﻿using System;
 namespace PassengerService.DTO
 {
+    [Serializable]
+
     public class RefundTicketRequest
     {
         public RefundTicketRequest(Guid passengerId, FlightTicket ticket)

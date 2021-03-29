@@ -1,14 +1,20 @@
 ﻿using System;
 namespace PassengerService.DTO
 {
+    [Serializable]
+
     public class Passenger
     {
         public Passenger()
         {
-            //TODO
+        
         }
 
-        public Guid Id { get; init; }
+        public Guid Id { get; init; } = Guid.NewGuid();
+
+        public bool HasBaggage { get; set; }
+
+        public bool IsVip { get; set; }
 
         //might be useless
         public PassengerStatus Status { get; set; }

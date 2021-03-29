@@ -1,6 +1,8 @@
 ﻿using System;
 namespace PassengerService.DTO
 {
+    [Serializable]
+
     public class RefundTicketResponse
     {
         public RefundTicketResponse(Guid passengerId, FlightTicket ticket, bool isRefunded)

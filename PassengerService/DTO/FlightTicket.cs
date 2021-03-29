@@ -3,6 +3,8 @@ namespace PassengerService.DTO
 {
     public class FlightTicket
     {
+        [Serializable]
+
         public FlightTicket(Guid passengerId, Guid flightId, bool hasBaggage, bool isVip)
         {
             PassengerId = passengerId;

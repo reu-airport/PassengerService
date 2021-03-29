@@ -1,6 +1,8 @@
 ﻿using System;
 namespace PassengerService.DTO
 {
+    [Serializable]
+
     public class BuyTicketResponse
     {
         public BuyTicketResponse(Guid passengerId, BuyTicketResponseStatus status, FlightTicket ticket)

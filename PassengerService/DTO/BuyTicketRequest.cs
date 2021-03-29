@@ -1,6 +1,8 @@
 ﻿using System;
 namespace PassengerService.DTO
 {
+    [Serializable]
+
     public class BuyTicketRequest
     {
         public BuyTicketRequest(Guid passengerId, Guid flightId, bool hasBaggage, bool isVip)

@@ -3,6 +3,8 @@ using System.Runtime.InteropServices;
 
 namespace PassengerService.DTO
 {
+    [Serializable]
+
     public class CheckInResponse
     {
         public CheckInResponse(Guid passengerId, BoardingPass pass, CheckInResponseStatus status)

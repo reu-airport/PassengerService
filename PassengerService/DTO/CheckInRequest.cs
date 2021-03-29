@@ -1,6 +1,8 @@
 ﻿using System;
 namespace PassengerService.DTO
 {
+    [Serializable]
+
     public class CheckInRequest
     {
         public CheckInRequest(Guid passengerId, FlightTicket ticket)
