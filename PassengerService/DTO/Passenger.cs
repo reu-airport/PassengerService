@@ -5,9 +5,10 @@ namespace PassengerService.DTO
 
     public class Passenger
     {
-        public Passenger()
+        public Passenger(bool hasBaggage, bool isVip)
         {
-        
+            HasBaggage = hasBaggage;
+            IsVip = isVip;
         }
 
         public Guid Id { get; init; } = Guid.NewGuid();
