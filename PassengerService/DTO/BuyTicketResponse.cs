@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Text.Json;
+
 namespace PassengerService.DTO
 {
     [Serializable]
@@ -18,6 +20,11 @@ namespace PassengerService.DTO
         public BuyTicketResponseStatus Status { get; init; }
 
         public FlightTicket Ticket { get; init; }
+
+        public static BuyTicketResponse Deserialize(byte[] body)
+        {
+            return JsonSerializer.Deserialize<BuyTicketResponse>(body);
+        }
     }
 
     //might be useless

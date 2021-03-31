@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Text.Json;
+
 namespace PassengerService.DTO
 {
     [Serializable]
@@ -18,5 +20,10 @@ namespace PassengerService.DTO
         public FlightTicket Ticket { get; init; }
 
         //TIMESTAMP
+
+        public byte[] Serialize()
+        {
+            return JsonSerializer.SerializeToUtf8Bytes<CheckInRequest>(this);
+        }
     }
 }

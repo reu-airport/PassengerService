@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 
 namespace PassengerService.DTO
 {
@@ -21,6 +22,11 @@ namespace PassengerService.DTO
 
         //might be useless
         public CheckInResponseStatus Status { get; init; }
+
+        public static CheckInResponse Deserialize(byte[] body)
+        {
+            return JsonSerializer.Deserialize<CheckInResponse>(body);
+        }
     }
 
     //might be useless

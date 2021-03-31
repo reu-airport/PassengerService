@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Text.Json;
+
 namespace PassengerService.DTO
 {
     [Serializable]
@@ -18,5 +20,10 @@ namespace PassengerService.DTO
         public FlightTicket Ticket { get; init; }
 
         public bool IsRefunded { get; init; }
+
+        public static RefundTicketResponse Deserialization(byte[] body)
+        {
+            return JsonSerializer.Deserialize<RefundTicketResponse>(body);
+        }
     }
 }

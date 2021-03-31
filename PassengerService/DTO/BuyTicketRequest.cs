@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace PassengerService.DTO
 {
     [Serializable]
@@ -24,5 +27,10 @@ namespace PassengerService.DTO
         public bool IsVip { get; init; }
 
         //TIMESTAMP
+
+        public byte[] Serialaize()
+        {
+            return JsonSerializer.SerializeToUtf8Bytes<BuyTicketRequest>(this);
+        }
     }
 }
