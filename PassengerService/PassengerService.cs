@@ -5,37 +5,56 @@ using PassengerService.DTO;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Threading.Channels;
+using System.Security.Cryptography;
+using System.Collections.Generic;
 
 namespace PassengerService
 {
-    public class PassengerService
+    public class PassengerService : IDisposable
     {
-        private const string PassengerToCashBoxQueue = "PassengerToCashBoxQueue";
-        private const string CashBoxToPassengerQueue = "CashBoxToPassengerQueue";
-
-        private const string PassengerToCheckInQueue = "PassengerToCheckInQueue";
-        private const string CheckInToPassengerQueue = "CheckInToPassengerQueue";
-
-
-        public PassengerService()
+        public enum QueueName
         {
+            PassengerBuyQueue,
+            BuyPassengerQueue,
+            PassengerRefundQueue,
+            RefundPassengerQueue,
+            PassengerToCheckInQueue,
+            CheckInToPassengerQueue,
         }
 
-        public void Run()
+        private readonly IConnection connection;
+        private readonly IModel channel;
+
+        private Dictionary<QueueName, string> queues = new Dictionary<QueueName, string>()
+        {
+            [QueueName.PassengerBuyQueue] = "PassengerBuyQueue",
+            [QueueName.BuyPassengerQueue] = "BuyPassengerQueue",
+            [QueueName.PassengerRefundQueue] = "PassengerRefundQueue",
+            [QueueName.RefundPassengerQueue] = "RefundPassengerQueue",
+            [QueueName.PassengerToCheckInQueue] = "PassengerToCheckInQueue",
+            [QueueName.CheckInToPassengerQueue] = "CheckInToPassengerQueue",
+        };      
+
+        public PassengerService()
         {
             var factory = new ConnectionFactory()
             {
                 //TODO
             };
 
-            using (IConnection connection = factory.CreateConnection())
+            connection = factory.CreateConnection();
+            IModel channel = connection.CreateModel();
+        }
+
+        public void Run()
+        {
+            //declare each message queue
+            foreach(var queue in queues)
             {
-                using (IModel channel = connection.CreateModel())
-                {
-
-                }
+                channel.QueueDeclare(queue.Value, true, false, false, null);
             }
-
+            
         }
 
         private void HandleBuyTicketResponse(BuyTicketResponse response)
@@ -55,17 +74,29 @@ namespace PassengerService
 
         private void SendBuyTicketRequest(BuyTicketRequest request)
         {
-            
+            byte[] body = request.Serialaize();
+
+            channel.BasicPublish("", queues[QueueName.PassengerBuyQueue], null, body);
         }
 
         private void SendCheckInRequest(CheckInRequest request)
         {
+            byte[] body = request.Serialize();
 
+            channel.BasicPublish("", queues[QueueName.PassengerToCheckInQueue], null, body);
         }
 
         private void SendRefundTicketRequest(RefundTicketRequest request)
         {
+            byte[] body = request.Serialize();
 
+            channel.BasicPublish("", queues[QueueName.PassengerRefundQueue], null, body);
+        }
+
+        public void Dispose()
+        {
+            channel.Close();
+            connection.Close();
         }
     }
 }

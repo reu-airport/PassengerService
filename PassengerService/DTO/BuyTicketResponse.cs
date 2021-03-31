@@ -30,6 +30,7 @@ namespace PassengerService.DTO
     //might be useless
     public enum BuyTicketResponseStatus
     {
-        //TODO
+        Success,
+        Error
     }
 }
