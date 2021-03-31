@@ -13,7 +13,7 @@ namespace PassengerService
 {
     public class PassengerService : IDisposable
     {
-        public enum QueueName
+        public enum Queues
         {
             PassengerBuyQueue,
             BuyPassengerQueue,
@@ -26,14 +26,14 @@ namespace PassengerService
         private readonly IConnection connection;
         private readonly IModel channel;
 
-        private Dictionary<QueueName, string> queues = new Dictionary<QueueName, string>()
+        private Dictionary<Queues, string> queues = new Dictionary<Queues, string>()
         {
-            [QueueName.PassengerBuyQueue] = "PassengerBuyQueue",
-            [QueueName.BuyPassengerQueue] = "BuyPassengerQueue",
-            [QueueName.PassengerRefundQueue] = "PassengerRefundQueue",
-            [QueueName.RefundPassengerQueue] = "RefundPassengerQueue",
-            [QueueName.PassengerToCheckInQueue] = "PassengerToCheckInQueue",
-            [QueueName.CheckInToPassengerQueue] = "CheckInToPassengerQueue",
+            [Queues.PassengerBuyQueue] = "PassengerBuyQueue",
+            [Queues.BuyPassengerQueue] = "BuyPassengerQueue",
+            [Queues.PassengerRefundQueue] = "PassengerRefundQueue",
+            [Queues.RefundPassengerQueue] = "RefundPassengerQueue",
+            [Queues.PassengerToCheckInQueue] = "PassengerToCheckInQueue",
+            [Queues.CheckInToPassengerQueue] = "CheckInToPassengerQueue",
         };      
 
         public PassengerService()
@@ -76,21 +76,21 @@ namespace PassengerService
         {
             byte[] body = request.Serialaize();
 
-            channel.BasicPublish("", queues[QueueName.PassengerBuyQueue], null, body);
+            channel.BasicPublish("", queues[Queues.PassengerBuyQueue], null, body);
         }
 
         private void SendCheckInRequest(CheckInRequest request)
         {
             byte[] body = request.Serialize();
 
-            channel.BasicPublish("", queues[QueueName.PassengerToCheckInQueue], null, body);
+            channel.BasicPublish("", queues[Queues.PassengerToCheckInQueue], null, body);
         }
 
         private void SendRefundTicketRequest(RefundTicketRequest request)
         {
             byte[] body = request.Serialize();
 
-            channel.BasicPublish("", queues[QueueName.PassengerRefundQueue], null, body);
+            channel.BasicPublish("", queues[Queues.PassengerRefundQueue], null, body);
         }
 
         public void Dispose()
