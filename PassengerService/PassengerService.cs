@@ -3,6 +3,8 @@ using RabbitMQ.Client;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using PassengerService.DTO;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace PassengerService
 {
@@ -18,30 +20,16 @@ namespace PassengerService
             CheckInToPassengerQueue,
         }
 
-        public PassengerService()
-        {
-            var factory = new ConnectionFactory()
-            {
-                //TODO
-            };
+        private const double PASSENGER_GENERATION_CHANCE = 0.5;
 
-            connection = factory.CreateConnection();
-            IModel channel = connection.CreateModel();
-
-            //declare and purge each message queue
-            foreach (var queue in queues)
-            {
-                channel.QueueDeclare(queue.Value, true, false, false, null);
-                channel.QueuePurge(queue.Value);
-            }
-        }
+        private const int PASSENGER_GENERATION_PERIOD_MS = 10 * 1000;
+        private const int PASSENGER_ACTIVITY_PERIOD_MS = 15 * 1000;
 
         private readonly IConnection connection;
         private readonly IModel channel;
 
         private ConcurrentDictionary<Guid, Passenger> passivePassengers = new ConcurrentDictionary<Guid, Passenger>();
         private ConcurrentDictionary<Guid, Passenger> waitingForResponsePassengers = new ConcurrentDictionary<Guid, Passenger>();
-
 
         private Dictionary<Queues, string> queues = new Dictionary<Queues, string>()
         {
@@ -51,11 +39,61 @@ namespace PassengerService
             [Queues.RefundPassengerQueue] = "RefundPassengerQueue",
             [Queues.PassengerToCheckInQueue] = "PassengerToCheckInQueue",
             [Queues.CheckInToPassengerQueue] = "CheckInToPassengerQueue",
-        };      
+        };
+
+        public PassengerService()
+        {
+            var factory = new ConnectionFactory()
+            {
+                
+            };
+
+            connection = factory.CreateConnection();
+            channel = connection.CreateModel();
+
+            //declare and purge each message queue
+            foreach (var queue in queues)
+            {
+                channel.QueueDeclare(queue.Value, true, false, false, null);
+                channel.QueuePurge(queue.Value);
+            }
+        }
 
         public void Run()
         {
-                       
+            var cancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = cancellationTokenSource.Token;
+
+            var random = new Random();
+            var passengerGenerator = new PassengerGenerator();
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        if (random.NextDouble() <= PASSENGER_GENERATION_CHANCE)
+                        {
+                            var passenger = passengerGenerator.GeneratePassenger();
+
+                            Console.WriteLine($"A new passenger:\t{passenger.Id}");
+
+                            passivePassengers.TryAdd(passenger.Id, passenger);                    
+                        }
+
+                        Thread.Sleep(PASSENGER_GENERATION_PERIOD_MS);
+                    }
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+            }, cancellationToken);
+
+
+            Console.ReadLine();
+            cancellationTokenSource.Cancel();
         }
 
         private void HandleBuyTicketResponse(BuyTicketResponse response)

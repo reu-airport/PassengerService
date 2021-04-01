@@ -6,7 +6,12 @@ namespace PassengerService
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            using (var passengerService = new PassengerService())
+            {
+                passengerService.Run();
+            }
+                
+            
         }
     }
 }
