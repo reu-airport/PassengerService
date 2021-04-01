@@ -1,13 +1,8 @@
 ﻿using System;
 using RabbitMQ.Client;
-
-using PassengerService.DTO;
-using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Threading.Channels;
-using System.Security.Cryptography;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
+using PassengerService.DTO;
 
 namespace PassengerService
 {
@@ -23,8 +18,30 @@ namespace PassengerService
             CheckInToPassengerQueue,
         }
 
+        public PassengerService()
+        {
+            var factory = new ConnectionFactory()
+            {
+                //TODO
+            };
+
+            connection = factory.CreateConnection();
+            IModel channel = connection.CreateModel();
+
+            //declare and purge each message queue
+            foreach (var queue in queues)
+            {
+                channel.QueueDeclare(queue.Value, true, false, false, null);
+                channel.QueuePurge(queue.Value);
+            }
+        }
+
         private readonly IConnection connection;
         private readonly IModel channel;
+
+        private ConcurrentDictionary<Guid, Passenger> passivePassengers = new ConcurrentDictionary<Guid, Passenger>();
+        private ConcurrentDictionary<Guid, Passenger> waitingForResponsePassengers = new ConcurrentDictionary<Guid, Passenger>();
+
 
         private Dictionary<Queues, string> queues = new Dictionary<Queues, string>()
         {
@@ -36,25 +53,9 @@ namespace PassengerService
             [Queues.CheckInToPassengerQueue] = "CheckInToPassengerQueue",
         };      
 
-        public PassengerService()
-        {
-            var factory = new ConnectionFactory()
-            {
-                //TODO
-            };
-
-            connection = factory.CreateConnection();
-            IModel channel = connection.CreateModel();
-        }
-
         public void Run()
         {
-            //declare each message queue
-            foreach(var queue in queues)
-            {
-                channel.QueueDeclare(queue.Value, true, false, false, null);
-            }
-            
+                       
         }
 
         private void HandleBuyTicketResponse(BuyTicketResponse response)
