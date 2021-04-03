@@ -21,6 +21,7 @@ namespace PassengerService
         }
 
         private const double PASSENGER_GENERATION_CHANCE = 0.5;
+        private const double PASSENGER_ACTIVITY_CHANCE = 0.5; 
 
         private const int PASSENGER_GENERATION_PERIOD_MS = 10 * 1000;
         private const int PASSENGER_ACTIVITY_PERIOD_MS = 15 * 1000;
@@ -28,10 +29,11 @@ namespace PassengerService
         private readonly IConnection connection;
         private readonly IModel channel;
 
-        private ConcurrentDictionary<Guid, Passenger> passivePassengers = new ConcurrentDictionary<Guid, Passenger>();
+        private ConcurrentQueue<Passenger> newPassengers = new ConcurrentQueue<Passenger>();
+        private ConcurrentQueue<Passenger> passengersWithTickets = new ConcurrentQueue<Passenger>();
         private ConcurrentDictionary<Guid, Passenger> waitingForResponsePassengers = new ConcurrentDictionary<Guid, Passenger>();
 
-        private Dictionary<Queues, string> queues = new Dictionary<Queues, string>()
+        private readonly Dictionary<Queues, string> queues = new Dictionary<Queues, string>()
         {
             [Queues.PassengerBuyQueue] = "PassengerBuyQueue",
             [Queues.BuyPassengerQueue] = "BuyPassengerQueue",
@@ -67,6 +69,7 @@ namespace PassengerService
             var random = new Random();
             var passengerGenerator = new PassengerGenerator();
 
+            //Task generates passengers
             Task.Run(() =>
             {
                 try
@@ -79,7 +82,7 @@ namespace PassengerService
 
                             Console.WriteLine($"A new passenger:\t{passenger.Id}");
 
-                            passivePassengers.TryAdd(passenger.Id, passenger);                    
+                            newPassengers.Enqueue(passenger);                    
                         }
 
                         Thread.Sleep(PASSENGER_GENERATION_PERIOD_MS);
@@ -91,6 +94,29 @@ namespace PassengerService
                 }
             }, cancellationToken);
 
+            //Task sends new passengers do something
+            Task.Run(() =>
+            {
+                try
+                {
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        if (random.NextDouble() <= PASSENGER_ACTIVITY_CHANCE)
+                        {
+                            if (newPassengers.TryDequeue(out var passenger))
+                            {
+                                //TODO
+                            }
+                        }
+
+                        Thread.Sleep(PASSENGER_ACTIVITY_PERIOD_MS);
+                    }
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+            }, cancellationToken);
 
             Console.ReadLine();
             cancellationTokenSource.Cancel();
