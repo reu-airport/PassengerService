@@ -32,7 +32,8 @@ namespace PassengerService.DTO
     //might be useless
     public enum CheckInResponseStatus
     {
-        //TODO
+        Success,
+        Error
     }
 
     //might be useless

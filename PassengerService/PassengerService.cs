@@ -23,7 +23,8 @@ namespace PassengerService
         }
 
         private const double PASSENGER_GENERATION_CHANCE = 0.5;
-        private const double PASSENGER_ACTIVITY_CHANCE = 0.5; 
+        private const double PASSENGER_ACTIVITY_CHANCE = 0.5;
+        private const double REFUND_TICKET_CHANCE = 0.1;
 
         private const int PASSENGER_GENERATION_PERIOD_MS = 10 * 1000;
         private const int PASSENGER_ACTIVITY_PERIOD_MS = 15 * 1000;
@@ -38,6 +39,7 @@ namespace PassengerService
 
         private ConcurrentQueue<Passenger> newPassengers = new ConcurrentQueue<Passenger>();
         private ConcurrentQueue<Passenger> passengersWithTickets = new ConcurrentQueue<Passenger>();
+        private ConcurrentQueue<Passenger> registeredPassengers = new ConcurrentQueue<Passenger>();
         private ConcurrentDictionary<Guid, Passenger> waitingForResponsePassengers = new ConcurrentDictionary<Guid, Passenger>();
 
         private readonly Dictionary<Queues, string> queues = new Dictionary<Queues, string>()
@@ -161,8 +163,7 @@ namespace PassengerService
                         {
                             if (newPassengers.TryDequeue(out var passenger))
                             {
-                                BuyTicketAction(passenger);
-                                
+                                BuyTicketAction(passenger);                              
                             }
                         }
 
@@ -175,6 +176,37 @@ namespace PassengerService
                 }
             }, cancellationToken);
 
+            //Task sends passengers with tickets do something
+            Task.Run(() =>
+            {
+                try
+                {
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        if (random.NextDouble() <= PASSENGER_ACTIVITY_CHANCE)
+                        {
+                            if (newPassengers.TryDequeue(out var passenger))
+                            {
+                                if (random.NextDouble() <= REFUND_TICKET_CHANCE)
+                                {
+                                    RefundTicketAction(passenger);
+                                }
+                                else
+                                {
+                                    CheckInAction(passenger);
+                                }
+
+                            }
+                        }
+                    }
+
+                    Thread.Sleep(PASSENGER_ACTIVITY_PERIOD_MS);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+            }, cancellationToken);
             Console.ReadLine();
             cancellationTokenSource.Cancel();
         }
@@ -215,8 +247,33 @@ namespace PassengerService
             var request = new RefundTicketRequest(
                 passengerId: passenger.Id,
                 ticket: passenger.Ticket);
-            SendRefundTicketRequest(request);
+            try
+            {
+                SendRefundTicketRequest(request);
+                waitingForResponsePassengers.TryAdd(passenger.Id, passenger);
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
         }
+
+        private void CheckInAction(Passenger passenger)
+        {
+            var request = new CheckInRequest(
+                passengerId: passenger.Id,
+                ticket: passenger.Ticket);
+            try
+            {
+                SendCheckInRequest(request);
+                waitingForResponsePassengers.TryAdd(passenger.Id, passenger);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }           
+        }
+
         //Cashbox response processing
         private void HandleBuyTicketResponse(BuyTicketResponse response)
         {
@@ -240,9 +297,28 @@ namespace PassengerService
           
         }
 
+        //Check-in response processing
         private void HandleCheckInResponse(CheckInResponse response)
         {
+            Guid passengerId = response.PassengerId;
+            waitingForResponsePassengers.TryRemove(passengerId, out var passenger);
 
+            var status = response.Status;
+            if (status == CheckInResponseStatus.Success)
+            {
+                registeredPassengers.Enqueue(passenger);
+            }
+            else
+            {
+                if (passenger.Ticket != null)
+                {
+                    passengersWithTickets.Enqueue(passenger);
+                }
+                else
+                {
+                    newPassengers.Enqueue(passenger);
+                }                
+            }
         }
 
         private void HandleRefundTicketResponse(RefundTicketResponse response)
