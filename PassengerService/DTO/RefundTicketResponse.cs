@@ -21,7 +21,7 @@ namespace PassengerService.DTO
 
         public bool IsRefunded { get; init; }
 
-        public static RefundTicketResponse Deserialization(byte[] body)
+        public static RefundTicketResponse Deserialize(byte[] body)
         {
             return JsonSerializer.Deserialize<RefundTicketResponse>(body);
         }
