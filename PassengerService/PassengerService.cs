@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using RabbitMQ.Client.Events;
 using System.Text.Json;
+using System.Linq;
 
 namespace PassengerService
 {
@@ -213,14 +214,8 @@ namespace PassengerService
 
         private void BuyTicketAction(Passenger passenger)
         {
-            List<AirplaneEvent> departingAirplanes = new List<AirplaneEvent>();
-            foreach (var airplaneEvent in AirplaneSchedule)
-            {
-                if (airplaneEvent.EventType == EventType.Departure)
-                {
-                    departingAirplanes.Add(airplaneEvent);
-                }
-            }
+            List<AirplaneEvent> departingAirplanes = AirplaneSchedule.Where(
+                f => f.EventType == EventType.Departure).ToList();
 
             try
             {
