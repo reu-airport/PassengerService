@@ -214,8 +214,7 @@ namespace PassengerService
 
         private void BuyTicketAction(Passenger passenger)
         {
-            List<AirplaneEvent> departingAirplanes = AirplaneSchedule.Where(
-                f => f.EventType == EventType.Departure).ToList();
+            var departingAirplanes = AirplaneSchedule.Where(f => f.EventType == EventType.Departure).ToList();
 
             try
             {
