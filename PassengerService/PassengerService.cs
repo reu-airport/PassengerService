@@ -5,6 +5,8 @@ using System.Collections.Concurrent;
 using PassengerService.DTO;
 using System.Threading.Tasks;
 using System.Threading;
+using RabbitMQ.Client.Events;
+using System.Text.Json;
 
 namespace PassengerService
 {
@@ -43,6 +45,10 @@ namespace PassengerService
             [Queues.CheckInToPassengerQueue] = "CheckInToPassengerQueue",
         };
 
+        private readonly string infoPanelExchangeName = "InfoPanel";
+        private string infoPanelQueueName;
+        private List<AirplaneEvent> AirplaneSchedule;
+        
         public PassengerService()
         {
             var factory = new ConnectionFactory()
@@ -59,6 +65,11 @@ namespace PassengerService
                 channel.QueueDeclare(queue.Value, true, false, false, null);
                 channel.QueuePurge(queue.Value);
             }
+
+            //declare an exchange for info panel
+            channel.ExchangeDeclare(infoPanelExchangeName, ExchangeType.Fanout);
+            infoPanelQueueName = channel.QueueDeclare().QueueName;
+            channel.QueueBind(infoPanelQueueName, infoPanelExchangeName, "", null);        
         }
 
         public void Run()
@@ -68,6 +79,19 @@ namespace PassengerService
 
             var random = new Random();
             var passengerGenerator = new PassengerGenerator();
+
+            var infoPanelConsumer = new EventingBasicConsumer(channel);
+            infoPanelConsumer.Received += (model, ea) =>
+            {
+                var body = ea.Body.ToArray();
+                AirplaneSchedule = JsonSerializer.Deserialize<List<AirplaneEvent>>(body);
+            };
+
+            channel.BasicConsume(
+                queue: infoPanelQueueName,
+                autoAck: true,
+                consumer: infoPanelConsumer);
+
 
             //Task generates passengers
             Task.Run(() =>
@@ -105,7 +129,8 @@ namespace PassengerService
                         {
                             if (newPassengers.TryDequeue(out var passenger))
                             {
-                                //TODO
+                                BuyTicketAction(passenger);
+                                waitingForResponsePassengers.TryAdd(passenger.Id, passenger);
                             }
                         }
 
@@ -122,9 +147,46 @@ namespace PassengerService
             cancellationTokenSource.Cancel();
         }
 
+        private void BuyTicketAction(Passenger passenger)
+        {
+            int airplanes = AirplaneSchedule.Count;
+
+            foreach(var airplaneEvent in AirplaneSchedule)
+            {
+                if (airplaneEvent.EventType == EventType.Departure)
+                {
+                    var request = new BuyTicketRequest(
+                        passengerId: passenger.Id,
+                        flightId: airplaneEvent.PlaneId,
+                        hasBaggage: passenger.HasBaggage,
+                        isVip: passenger.IsVip);
+
+                    SendBuyTicketRequest(request);
+                }
+            }
+        }
+
+        //Cashbox response processing
         private void HandleBuyTicketResponse(BuyTicketResponse response)
         {
+            Guid passengerId = response.PassengerId;
+            waitingForResponsePassengers.TryRemove(passengerId, out var passenger);
 
+            var status = response.Status;
+            if (status == BuyTicketResponseStatus.Success)
+            {
+                passenger.Ticket = response.Ticket;
+                passengersWithTickets.Enqueue(passenger);
+            }
+            else if(passenger.Ticket != null)
+            {
+                passengersWithTickets.Enqueue(passenger);
+            }
+            else
+            {
+                newPassengers.Enqueue(passenger);
+            }
+          
         }
 
         private void HandleCheckInResponse(CheckInResponse response)
@@ -134,7 +196,7 @@ namespace PassengerService
 
         private void HandleRefundTicketResponse(RefundTicketResponse response)
         {
-
+            
         }
 
         private void SendBuyTicketRequest(BuyTicketRequest request)
