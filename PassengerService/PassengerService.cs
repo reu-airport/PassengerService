@@ -50,7 +50,7 @@ namespace PassengerService
             [Queues.PassengerRefundQueue] = "PassengerRefundQueue",
             [Queues.RefundPassengerQueue] = "RefundPassengerQueue",
             [Queues.PassengerToCheckInQueue] = "PassengerToCheckInQueue",
-            [Queues.CheckInToPassengerQueue] = "CheckInToPassengerQueue",
+            [Queues.CheckInToPassengerQueue] = "Ticket",
         };
 
         private string infoPanelQueueName;
