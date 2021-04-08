@@ -26,7 +26,7 @@ namespace PassengerService
         private const double PASSENGER_GENERATION_CHANCE = 0.5;
         private const double PASSENGER_ACTIVITY_CHANCE = 0.5;
         private const double REFUND_TICKET_CHANCE = 0.05;
-        private const double DO_NORMAL_ACTION_CHANCE = 0.9;
+        private const double DO_NORMAL_ACTION_CHANCE = 0.95;
 
         private const int PASSENGER_GENERATION_PERIOD_MS = 10 * 1000;
         private const int PASSENGER_ACTIVITY_PERIOD_MS = 15 * 1000;
