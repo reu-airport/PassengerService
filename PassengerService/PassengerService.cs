@@ -31,6 +31,7 @@ namespace PassengerService
         private const int PASSENGER_GENERATION_PERIOD_MS = 10 * 1000;
         private const int PASSENGER_ACTIVITY_PERIOD_MS = 15 * 1000;
 
+        //IDK WHY I NEED IT
         private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
         private CancellationToken cancellationToken;
 
