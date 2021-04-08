@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using RabbitMQ.Client.Events;
 using System.Text.Json;
-using System.Linq;
+using System.Net.Http;
 
 namespace PassengerService
 {
@@ -45,9 +45,9 @@ namespace PassengerService
 
         private readonly Dictionary<Queues, string> queues = new Dictionary<Queues, string>()
         {
-            [Queues.PassengerBuyQueue] = "PassengerBuyQueue",
+            [Queues.PassengerBuyQueue] = "CashboxBuyTicket",
             [Queues.BuyPassengerQueue] = "BuyPassengerQueue",
-            [Queues.PassengerRefundQueue] = "PassengerRefundQueue",
+            [Queues.PassengerRefundQueue] = "CashboxRefundTicket",
             [Queues.RefundPassengerQueue] = "RefundPassengerQueue",
             [Queues.PassengerToCheckInQueue] = "PassengerToCheckInQueue",
             [Queues.CheckInToPassengerQueue] = "Ticket",
@@ -65,7 +65,9 @@ namespace PassengerService
         private readonly IModel channel;
 
         Random random = new Random();
-        
+
+        HttpClient client = new HttpClient();
+
         public PassengerService()
         {
             cancellationToken = cancellationTokenSource.Token;
@@ -100,7 +102,7 @@ namespace PassengerService
                 HandleBuyTicketResponse(response);
             };
             channel.BasicConsume(
-                queue: infoPanelQueueName,
+                queue: queues[Queues.BuyPassengerQueue],
                 autoAck: true,
                 consumer: buyPassengerQueueConsumer);
 
@@ -112,7 +114,7 @@ namespace PassengerService
                 HandleRefundTicketResponse(response);
             };
             channel.BasicConsume(
-                queue: infoPanelQueueName,
+                queue: queues[Queues.RefundPassengerQueue],
                 autoAck: true,
                 consumer: refundPassengerQueueConsumer);
 
@@ -124,7 +126,7 @@ namespace PassengerService
                 HandleCheckInResponse(response);
             };
             channel.BasicConsume(
-                queue: infoPanelQueueName,
+                queue: queues[Queues.CheckInToPassengerQueue],
                 autoAck: true,
                 consumer: checkInToPassengerQueueConsumer);
 
@@ -151,7 +153,7 @@ namespace PassengerService
                     {
                         if (random.NextDouble() <= PASSENGER_GENERATION_CHANCE)
                         {
-                            var passenger = passengerGenerator.GeneratePassenger();                            
+                            var passenger = passengerGenerator.GeneratePassenger();
 
                             newPassengers.Enqueue(passenger);
 
@@ -263,6 +265,8 @@ namespace PassengerService
 
         private void BuyTicketAction(Passenger passenger)
         {
+            var content = client.GetStringAsync(//TODO);
+
             var flight = availableFlights[random.Next(availableFlights.Length)];
 
             var request = new BuyTicketRequest(
@@ -419,6 +423,7 @@ namespace PassengerService
 
         public void Dispose()
         {
+            client.Dispose();
             channel.Close();
             connection.Close();
         }

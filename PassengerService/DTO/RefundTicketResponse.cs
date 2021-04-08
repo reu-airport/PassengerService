@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using System.Text.Json;
 
 namespace PassengerService.DTO
@@ -16,7 +17,6 @@ namespace PassengerService.DTO
 
         public Guid PassengerId { get; init; }
 
-        //ne ponel nahuya
         public FlightTicket Ticket { get; init; }
 
         public bool IsRefunded { get; init; }

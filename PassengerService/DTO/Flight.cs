@@ -19,9 +19,9 @@ namespace PassengerService.DTO
 
         //CheckInEndTime { get; init; }
 
-        //HasVips { get; init; }
+        public bool HasVips { get; init; }
 
-        //HasBaggage { get; init; }
+        public bool HasBaggage { get; init; }
 
         //Airplane { get; init; }
     }
