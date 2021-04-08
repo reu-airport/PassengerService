@@ -72,7 +72,8 @@ namespace PassengerService
 
             var factory = new ConnectionFactory()
             {
-                
+                Uri = new Uri("amqps://avfepwdu:SS4fTAg36RK1hPQAUnyC6TH-4Mf3uyJo@fox.rmq.cloudamqp.com/avfepwdu")
+                //Uri = new Uri("amqps://sznpfban:Tx-Pxw7Hnr3qYpewSDnTEXAearxBt21h@cow.rmq2.cloudamqp.com/sznpfban")              
             };
 
             connection = factory.CreateConnection();
@@ -150,11 +151,11 @@ namespace PassengerService
                     {
                         if (random.NextDouble() <= PASSENGER_GENERATION_CHANCE)
                         {
-                            var passenger = passengerGenerator.GeneratePassenger();
+                            var passenger = passengerGenerator.GeneratePassenger();                            
+
+                            newPassengers.Enqueue(passenger);
 
                             Console.WriteLine($"A new passenger:\t{passenger.Id}");
-
-                            newPassengers.Enqueue(passenger);                    
                         }
 
                         Thread.Sleep(PASSENGER_GENERATION_PERIOD_MS);
@@ -272,7 +273,8 @@ namespace PassengerService
 
             try
             {
-                SendBuyTicketRequest(request);         
+                SendBuyTicketRequest(request);
+                Console.WriteLine($"Passenger {passenger.Id} tries to buy a ticket");
             }
             catch(Exception e)
             {
@@ -289,6 +291,7 @@ namespace PassengerService
             try
             {
                 SendRefundTicketRequest(request);
+                Console.WriteLine($"Passenger {passenger.Id} tries to refund a ticket");
             }
             catch(Exception e)
             {
@@ -305,6 +308,7 @@ namespace PassengerService
             try
             {
                 SendCheckInRequest(request);
+                Console.WriteLine($"Passenger {passenger.Id} tries to check-in on {passenger.Ticket.FlightId} flight");
             }
             catch (Exception e)
             {

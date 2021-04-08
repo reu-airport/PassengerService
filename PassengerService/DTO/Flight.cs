@@ -3,8 +3,10 @@ namespace PassengerService.DTO
 {
     public class Flight
     {
-        public Flight()
+        public Flight(Guid id, FlightDirection direction)
         {
+            Id = id;
+            Direction = direction;
         }
 
         public Guid Id { get; init; }
