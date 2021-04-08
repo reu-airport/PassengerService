@@ -13,9 +13,17 @@ namespace PassengerService.DTO
 
         public FlightDirection Direction { get; init; }
 
-        //time {get; init; }
+        //Time {get; init; }
 
-        
+        //CheckInBeginTime { get; init; }
+
+        //CheckInEndTime { get; init; }
+
+        //HasVips { get; init; }
+
+        //HasBaggage { get; init; }
+
+        //Airplane { get; init; }
     }
 
     public enum FlightDirection
