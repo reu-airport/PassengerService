@@ -25,13 +25,11 @@ namespace PassengerService
 
         private const double PASSENGER_GENERATION_CHANCE = 0.5;
         private const double PASSENGER_ACTIVITY_CHANCE = 0.5;
-        private const double REFUND_TICKET_CHANCE = 0.1;
+        private const double REFUND_TICKET_CHANCE = 0.05;
+        private const double DO_NORMAL_ACTION_CHANCE = 0.9;
 
         private const int PASSENGER_GENERATION_PERIOD_MS = 10 * 1000;
         private const int PASSENGER_ACTIVITY_PERIOD_MS = 15 * 1000;
-
-        private readonly IConnection connection;
-        private readonly IModel channel;
 
         private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
         private CancellationToken cancellationToken;
@@ -40,8 +38,9 @@ namespace PassengerService
 
         private ConcurrentQueue<Passenger> newPassengers = new ConcurrentQueue<Passenger>();
         private ConcurrentQueue<Passenger> passengersWithTickets = new ConcurrentQueue<Passenger>();
-        private ConcurrentQueue<Passenger> registeredPassengers = new ConcurrentQueue<Passenger>();
         private ConcurrentDictionary<Guid, Passenger> waitingForResponsePassengers = new ConcurrentDictionary<Guid, Passenger>();
+
+        private Flight[] availableFlights;
 
         private readonly Dictionary<Queues, string> queues = new Dictionary<Queues, string>()
         {
@@ -53,15 +52,16 @@ namespace PassengerService
             [Queues.CheckInToPassengerQueue] = "CheckInToPassengerQueue",
         };
 
+        private string infoPanelQueueName;
+        private readonly string infoPanelExchangeName = "InfoPanel";
+
         private EventingBasicConsumer buyPassengerQueueConsumer;
         private EventingBasicConsumer refundPassengerQueueConsumer;
         private EventingBasicConsumer checkInToPassengerQueueConsumer;
         private EventingBasicConsumer infoPanelConsumer;
 
-
-        private readonly string infoPanelExchangeName = "InfoPanel";
-        private string infoPanelQueueName;
-        private List<AirplaneEvent> AirplaneSchedule;
+        private readonly IConnection connection;
+        private readonly IModel channel;
 
         Random random = new Random();
         
@@ -97,6 +97,10 @@ namespace PassengerService
                 var response = BuyTicketResponse.Deserialize(body);
                 HandleBuyTicketResponse(response);
             };
+            channel.BasicConsume(
+                queue: infoPanelQueueName,
+                autoAck: true,
+                consumer: buyPassengerQueueConsumer);
 
             refundPassengerQueueConsumer = new EventingBasicConsumer(channel);
             refundPassengerQueueConsumer.Received += (model, ea) =>
@@ -105,6 +109,10 @@ namespace PassengerService
                 var response = RefundTicketResponse.Deserialize(body);
                 HandleRefundTicketResponse(response);
             };
+            channel.BasicConsume(
+                queue: infoPanelQueueName,
+                autoAck: true,
+                consumer: refundPassengerQueueConsumer);
 
             checkInToPassengerQueueConsumer = new EventingBasicConsumer(channel);
             checkInToPassengerQueueConsumer.Received += (model, ea) =>
@@ -113,12 +121,16 @@ namespace PassengerService
                 var response = CheckInResponse.Deserialize(body);
                 HandleCheckInResponse(response);
             };
+            channel.BasicConsume(
+                queue: infoPanelQueueName,
+                autoAck: true,
+                consumer: checkInToPassengerQueueConsumer);
 
             infoPanelConsumer = new EventingBasicConsumer(channel);
             infoPanelConsumer.Received += (model, ea) =>
             {
                 var body = ea.Body.ToArray();
-                AirplaneSchedule = JsonSerializer.Deserialize<List<AirplaneEvent>>(body);
+                availableFlights = JsonSerializer.Deserialize<Flight[]>(body);
             };
             channel.BasicConsume(
                 queue: infoPanelQueueName,
@@ -161,12 +173,33 @@ namespace PassengerService
                     while (!cancellationToken.IsCancellationRequested)
                     {
                         if (random.NextDouble() <= PASSENGER_ACTIVITY_CHANCE)
-                        {
+                        {                           
                             if (newPassengers.TryDequeue(out var passenger))
                             {
-                                BuyTicketAction(passenger);                              
+                                if (random.NextDouble() <= DO_NORMAL_ACTION_CHANCE)
+                                {
+                                    BuyTicketAction(passenger);
+                                }
+                                else
+                                {
+                                    if (random.NextDouble() <= 0.5)
+                                    {
+                                        RefundTicketAction(passenger);
+                                    }
+                                    else
+                                    {
+                                        CheckInAction(passenger);
+                                    }
+                                }
+
+                                waitingForResponsePassengers.TryAdd(passenger.Id, passenger);
                             }
+                            else
+                            {
+                                throw new Exception("Cannot dequeue a new passenger");
+                            }      
                         }
+                        
 
                         Thread.Sleep(PASSENGER_ACTIVITY_PERIOD_MS);
                     }
@@ -188,16 +221,29 @@ namespace PassengerService
                         {
                             if (newPassengers.TryDequeue(out var passenger))
                             {
-                                if (random.NextDouble() <= REFUND_TICKET_CHANCE)
+                                if (random.NextDouble() <= DO_NORMAL_ACTION_CHANCE)
                                 {
-                                    RefundTicketAction(passenger);
+                                    if (random.NextDouble() <= REFUND_TICKET_CHANCE)
+                                    {
+                                        RefundTicketAction(passenger);
+                                    }
+                                    else
+                                    {
+                                        CheckInAction(passenger);
+                                    }
                                 }
                                 else
                                 {
-                                    CheckInAction(passenger);
+                                    BuyTicketAction(passenger);
                                 }
 
+                                waitingForResponsePassengers.TryAdd(passenger.Id, passenger);
                             }
+                            else
+                            {
+                                throw new Exception("Cannot dequeue a passenger with ticket");
+                            }
+
                         }
                     }
 
@@ -208,27 +254,24 @@ namespace PassengerService
                     Console.WriteLine(e.Message);
                 }
             }, cancellationToken);
+
             Console.ReadLine();
             cancellationTokenSource.Cancel();
         }
 
         private void BuyTicketAction(Passenger passenger)
         {
-            var departingAirplanes = AirplaneSchedule.Where(f => f.EventType == EventType.Departure).ToList();
+            var flight = availableFlights[random.Next(availableFlights.Length)];
+
+            var request = new BuyTicketRequest(
+                        passengerId: passenger.Id,
+                        flightId: flight.Id,
+                        hasBaggage: passenger.HasBaggage,
+                        isVip: passenger.IsVip);
 
             try
             {
-                int departingAirplanesCount = departingAirplanes.Count;
-                var airplaneEvent = departingAirplanes[random.Next(departingAirplanesCount)];
-
-                var request = new BuyTicketRequest(
-                            passengerId: passenger.Id,
-                            flightId: airplaneEvent.PlaneId,
-                            hasBaggage: passenger.HasBaggage,
-                            isVip: passenger.IsVip);
-
-                SendBuyTicketRequest(request);
-                waitingForResponsePassengers.TryAdd(passenger.Id, passenger);
+                SendBuyTicketRequest(request);         
             }
             catch(Exception e)
             {
@@ -241,10 +284,10 @@ namespace PassengerService
             var request = new RefundTicketRequest(
                 passengerId: passenger.Id,
                 ticket: passenger.Ticket);
+
             try
             {
                 SendRefundTicketRequest(request);
-                waitingForResponsePassengers.TryAdd(passenger.Id, passenger);
             }
             catch(Exception e)
             {
@@ -257,10 +300,10 @@ namespace PassengerService
             var request = new CheckInRequest(
                 passengerId: passenger.Id,
                 ticket: passenger.Ticket);
+
             try
             {
                 SendCheckInRequest(request);
-                waitingForResponsePassengers.TryAdd(passenger.Id, passenger);
             }
             catch (Exception e)
             {
@@ -272,64 +315,80 @@ namespace PassengerService
         private void HandleBuyTicketResponse(BuyTicketResponse response)
         {
             Guid passengerId = response.PassengerId;
-            waitingForResponsePassengers.TryRemove(passengerId, out var passenger);
+            if (waitingForResponsePassengers.TryRemove(passengerId, out var passenger))
+            {
+                if (response.Status == BuyTicketResponseStatus.Success)
+                {
+                    passenger.Ticket = response.Ticket;                   
+                    Console.WriteLine($"Passenger №{passenger.Id} has just bought a ticket");
+                }
+                else
+                {
+                    Console.WriteLine($"Couldn't buy a ticket: passenger №{passenger.Id} already has a ticket");
+                }
 
-            var status = response.Status;
-            if (status == BuyTicketResponseStatus.Success)
-            {
-                passenger.Ticket = response.Ticket;
-                passengersWithTickets.Enqueue(passenger);
-            }
-            else if(passenger.Ticket != null)
-            {
                 passengersWithTickets.Enqueue(passenger);
             }
             else
             {
-                newPassengers.Enqueue(passenger);
+                throw new Exception("Cannot remove a waiting passenger");
             }
-          
         }
 
         //Check-in response processing
         private void HandleCheckInResponse(CheckInResponse response)
         {
             Guid passengerId = response.PassengerId;
-            waitingForResponsePassengers.TryRemove(passengerId, out var passenger);
-
-            var status = response.Status;
-            if (status == CheckInResponseStatus.Success)
+            if (waitingForResponsePassengers.TryRemove(passengerId, out var passenger))
             {
-                registeredPassengers.Enqueue(passenger);
-            }
-            else
-            {
-                if (passenger.Ticket != null)
+                if (response.Status == CheckInResponseStatus.Success)
                 {
-                    passengersWithTickets.Enqueue(passenger);
+                    Console.WriteLine($"Passenger №{passenger.Id} has been registrated");
+                    return;
+                }
+                else if (passenger.Ticket == null)
+                {
+                    Console.WriteLine($"Couldn't check-in: passenger №{passenger.Id} has no ticket");
+                    newPassengers.Enqueue(passenger);
                 }
                 else
                 {
-                    newPassengers.Enqueue(passenger);
-                }                
+                    //TODO
+                    //FURTHER ACTIONS DEPENDS ON WHETHER IT'S TOO LATE OR REGISTRATION HASN'T BEGUN
+                }
+            }
+            else
+            {
+                throw new Exception("Cannot remove a waiting passenger");
             }
         }
 
         private void HandleRefundTicketResponse(RefundTicketResponse response)
         {
             Guid passengerId = response.PassengerId;
-            waitingForResponsePassengers.TryRemove(passengerId, out var passenger);
-
-            if (response.IsRefunded)
+            if (waitingForResponsePassengers.TryRemove(passengerId, out var passenger))
             {
-                Console.WriteLine("");
+                if (response.IsRefunded)
+                {
+                    passenger.Ticket = null;
+                    Console.WriteLine($"A Ticket of passenger №{passenger.Id} has been refunded");
+                }
+                else if (passenger.Ticket != null)
+                {
+                    passenger.Ticket = null;
+                    Console.WriteLine($"Could't refund a ticket of passenger №{passenger.Id}: too late");
+                }
+                else
+                {
+                    Console.WriteLine($"Could't refund a ticket of passenger №{passenger.Id}: no ticket");
+                }
+
+                newPassengers.Enqueue(passenger);
             }
             else
             {
-                Console.WriteLine("");
+                throw new Exception("Cannot remove a waiting passenger");
             }
-            passenger.Ticket = null;
-            newPassengers.Enqueue(passenger);
         }
 
         private void SendBuyTicketRequest(BuyTicketRequest request)

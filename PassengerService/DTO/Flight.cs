@@ -7,14 +7,13 @@ namespace PassengerService.DTO
         {
         }
 
-        Guid Id { get; init; }
+        public Guid Id { get; init; }
 
-        FlightDirection Direction{ get; init; }
+        public FlightDirection Direction { get; init; }
 
         //time {get; init; }
 
         
-
     }
 
     public enum FlightDirection
