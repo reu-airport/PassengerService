@@ -308,7 +308,7 @@ namespace PassengerService
             try
             {
                 SendCheckInRequest(request);
-                Console.WriteLine($"Passenger {passenger.Id} tries to check-in on {passenger.Ticket.FlightId} flight");
+                Console.WriteLine($"Passenger {passenger.Id} tries to check-in");
             }
             catch (Exception e)
             {
