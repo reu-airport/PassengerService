@@ -28,8 +28,11 @@ namespace PassengerService
         private const double REFUND_TICKET_CHANCE = 0.05;
         private const double DO_NORMAL_ACTION_CHANCE = 0.95;
 
-        private const int PASSENGER_GENERATION_PERIOD_MS = 5 * 1000;
-        private const int PASSENGER_ACTIVITY_PERIOD_MS = 4 * 1000;
+        private const long PASSENGER_GENERATION_PERIOD_MS = 5 * 1000;
+        private const long PASSENGER_ACTIVITY_PERIOD_MS = 4 * 1000;
+
+        private const string INFO_PANEL_QUERY = "/api/v1/getAllAvailable";
+        private const string TIME_QUERY = "api/v1/time";
 
         //IDK WHY I NEED IT
         private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
@@ -53,9 +56,6 @@ namespace PassengerService
             [Queues.CheckInToPassengerQueue] = "Ticket",
         };
 
-        private string infoPanelQueueName;
-        private readonly string infoPanelExchangeName = "InfoPanel";
-
         private EventingBasicConsumer buyPassengerQueueConsumer;
         private EventingBasicConsumer refundPassengerQueueConsumer;
         private EventingBasicConsumer checkInToPassengerQueueConsumer;
@@ -64,9 +64,11 @@ namespace PassengerService
         private readonly IConnection connection;
         private readonly IModel channel;
 
-        Random random = new Random();
+        private long time_factor = 1;
 
-        HttpClient client = new HttpClient();
+        private readonly Random random = new Random();
+
+        private readonly HttpClient client = new HttpClient();
 
         public PassengerService()
         {
@@ -123,21 +125,14 @@ namespace PassengerService
                 queue: queues[Queues.CheckInToPassengerQueue],
                 autoAck: true,
                 consumer: checkInToPassengerQueueConsumer);
-
-            infoPanelConsumer = new EventingBasicConsumer(channel);
-            infoPanelConsumer.Received += (model, ea) =>
-            {
-                var body = ea.Body.ToArray();
-                availableFlights = JsonSerializer.Deserialize<Flight[]>(body);
-            };
-            channel.BasicConsume(
-                queue: infoPanelQueueName,
-                autoAck: true,
-                consumer: infoPanelConsumer);
         }
 
         public void Run()
         {
+            var content = client.GetStringAsync(INFO_PANEL_QUERY);
+
+            time_factor = (JsonSerializer.Deserialize<Time>(content.Result)).Factor;
+
             //Task generates passengers
             Task.Run(() =>
             {
@@ -154,7 +149,7 @@ namespace PassengerService
                             Console.WriteLine($"A new passenger:\t{passenger.Id}");
                         }
 
-                        Thread.Sleep(PASSENGER_GENERATION_PERIOD_MS);
+                        Thread.Sleep(Convert.ToInt32(PASSENGER_GENERATION_PERIOD_MS / time_factor));
                     }
                 }
                 catch(Exception e)
@@ -168,7 +163,7 @@ namespace PassengerService
             {
                 try
                 {
-                    Thread.Sleep(PASSENGER_ACTIVITY_PERIOD_MS);
+                    Thread.Sleep(Convert.ToInt32(PASSENGER_ACTIVITY_PERIOD_MS / time_factor));
 
                     while (!cancellationToken.IsCancellationRequested)
                     {
@@ -212,7 +207,7 @@ namespace PassengerService
             {
                 try
                 {
-                    Thread.Sleep(PASSENGER_ACTIVITY_PERIOD_MS);
+                    Thread.Sleep(Convert.ToInt32(PASSENGER_ACTIVITY_PERIOD_MS / time_factor));
 
                     while (!cancellationToken.IsCancellationRequested)
                     {
@@ -258,7 +253,9 @@ namespace PassengerService
 
         private void BuyTicketAction(Passenger passenger)
         {
-            var content = client.GetStringAsync(//TODO);
+            var content = client.GetStringAsync(TIME_QUERY);
+
+            availableFlights = JsonSerializer.Deserialize<Flight[]>(content.Result);
 
             var flight = availableFlights[random.Next(availableFlights.Length)];
 
