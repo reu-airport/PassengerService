@@ -14,7 +14,7 @@ namespace PassengerService
 
         }
 
-        Random random = new Random();
+        private readonly Random random = new Random();
 
         public Passenger GeneratePassenger()
         {
