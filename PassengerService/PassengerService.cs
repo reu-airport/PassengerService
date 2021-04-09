@@ -28,14 +28,14 @@ namespace PassengerService
         private const double REFUND_TICKET_CHANCE = 0.05;
         private const double DO_NORMAL_ACTION_CHANCE = 0.95;
 
-        private const int PASSENGER_GENERATION_PERIOD_MS = 10 * 1000;
-        private const int PASSENGER_ACTIVITY_PERIOD_MS = 15 * 1000;
+        private const int PASSENGER_GENERATION_PERIOD_MS = 5 * 1000;
+        private const int PASSENGER_ACTIVITY_PERIOD_MS = 4 * 1000;
 
         //IDK WHY I NEED IT
         private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
         private CancellationToken cancellationToken;
 
-        PassengerGenerator passengerGenerator = new PassengerGenerator();
+        private readonly PassengerGenerator passengerGenerator = new PassengerGenerator();
 
         private ConcurrentQueue<Passenger> newPassengers = new ConcurrentQueue<Passenger>();
         private ConcurrentQueue<Passenger> passengersWithTickets = new ConcurrentQueue<Passenger>();
@@ -87,12 +87,6 @@ namespace PassengerService
                 channel.QueueDeclare(queue.Value, true, false, false, null);
                 channel.QueuePurge(queue.Value);
             }
-
-            //declare an exchange for info panel
-            channel.ExchangeDeclare(infoPanelExchangeName, ExchangeType.Fanout);
-            infoPanelQueueName = channel.QueueDeclare().QueueName;
-            channel.QueueBind(infoPanelQueueName, infoPanelExchangeName, "", null);
-
 
             buyPassengerQueueConsumer = new EventingBasicConsumer(channel);
             buyPassengerQueueConsumer.Received += (model, ea) =>
@@ -174,6 +168,8 @@ namespace PassengerService
             {
                 try
                 {
+                    Thread.Sleep(PASSENGER_ACTIVITY_PERIOD_MS);
+
                     while (!cancellationToken.IsCancellationRequested)
                     {
                         if (random.NextDouble() <= PASSENGER_ACTIVITY_CHANCE)
@@ -203,9 +199,6 @@ namespace PassengerService
                                 throw new Exception("Cannot dequeue a new passenger");
                             }      
                         }
-                        
-
-                        Thread.Sleep(PASSENGER_ACTIVITY_PERIOD_MS);
                     }
                 }
                 catch(Exception e)
@@ -219,6 +212,8 @@ namespace PassengerService
             {
                 try
                 {
+                    Thread.Sleep(PASSENGER_ACTIVITY_PERIOD_MS);
+
                     while (!cancellationToken.IsCancellationRequested)
                     {
                         if (random.NextDouble() <= PASSENGER_ACTIVITY_CHANCE)
@@ -250,8 +245,6 @@ namespace PassengerService
 
                         }
                     }
-
-                    Thread.Sleep(PASSENGER_ACTIVITY_PERIOD_MS);
                 }
                 catch (Exception e)
                 {
@@ -350,20 +343,29 @@ namespace PassengerService
             Guid passengerId = response.PassengerId;
             if (waitingForResponsePassengers.TryRemove(passengerId, out var passenger))
             {
-                if (response.Status == CheckInResponseStatus.Success)
+                if (response.IsCheckedIn)
                 {
                     Console.WriteLine($"Passenger №{passenger.Id} has been registrated");
                     return;
                 }
-                else if (passenger.Ticket == null)
+                else if (response.Reason == CheckInResponse.NO_TICKET)
                 {
-                    Console.WriteLine($"Couldn't check-in: passenger №{passenger.Id} has no ticket");
+                    Console.WriteLine($"Couldn't check-in passenger №{passenger.Id}: no ticket");
                     newPassengers.Enqueue(passenger);
+                }
+                else if (response.Reason == CheckInResponse.EARLY)
+                {
+                    Console.WriteLine($"Couldn't check-in passenger №{passenger.Id}: registration has not begun");
+                    passengersWithTickets.Enqueue(passenger);
+                }
+                else if (response.Reason == CheckInResponse.LATE)
+                {
+                    Console.WriteLine($"Couldn't check-in passenger №{passenger.Id}: too late");
+                    //A passenger goes home very sad
                 }
                 else
                 {
-                    //TODO
-                    //FURTHER ACTIONS DEPENDS ON WHETHER IT'S TOO LATE OR REGISTRATION HASN'T BEGUN
+                    throw new ArgumentOutOfRangeException($"Invalid reason from check-in: \"{response.Reason}\"");
                 }
             }
             else

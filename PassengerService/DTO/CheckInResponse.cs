@@ -8,33 +8,28 @@ namespace PassengerService.DTO
 
     public class CheckInResponse
     {
-        public CheckInResponse(Guid passengerId, CheckInResponseStatus status)
+        public const string LATE = "Late";
+
+        public const string EARLY = "Early";
+
+        public const string NO_TICKET = "No ticket";
+
+        public CheckInResponse(Guid passengerId, bool isCheckedIn, string reason)
         {
             PassengerId = passengerId;
-            Status = status;
+            IsCheckedIn = isCheckedIn;
+            Reason = reason;
         }
 
         public Guid PassengerId { get; init; }
 
-        //might be useless
-        public CheckInResponseStatus Status { get; init; }
+        public bool IsCheckedIn { get; init; }
+
+        public string Reason { get; init; }
 
         public static CheckInResponse Deserialize(byte[] body)
         {
             return JsonSerializer.Deserialize<CheckInResponse>(body);
         }
-    }
-
-    //might be useless
-    public enum CheckInResponseStatus
-    {
-        Success,
-        Error
-    }
-
-    //might be useless
-    public class BoardingPass
-    {
-        //TODO
     }
 }

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Text.Json;
+
 namespace PassengerService.DTO
 {
     public class Flight
@@ -13,17 +15,20 @@ namespace PassengerService.DTO
 
         public FlightDirection Direction { get; init; }
 
-        //Time {get; init; }
+        public long Time {get; init; }
 
-        //CheckInBeginTime { get; init; }
+        public long CheckInBeginTime { get; init; }
 
-        //CheckInEndTime { get; init; }
+        public long CheckInEndTime { get; init; }
 
         public bool HasVips { get; init; }
 
         public bool HasBaggage { get; init; }
 
-        //Airplane { get; init; }
+        public static Flight Deserialize(byte[] body)
+        {
+            return JsonSerializer.Deserialize<Flight>(body);
+        }
     }
 
     public enum FlightDirection
