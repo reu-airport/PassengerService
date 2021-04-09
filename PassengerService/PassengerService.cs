@@ -32,8 +32,8 @@ namespace PassengerService
         private const long PASSENGER_ACTIVITY_PERIOD_MS = 4 * 1000;
         private const int TIME_FACTOR_REQUEST_PERIOD_MS = 5 * 1000;
 
-        private const string INFO_PANEL_QUERY = "/api/v1/getAllAvailable";
-        private const string TIME_QUERY = "api/v1/time";
+        private const string INFO_PANEL_QUERY = "/api/v1/getAllAvailable";//TODO
+        private const string TIME_QUERY = "api/v1/time";//TODO
 
         //IDK WHY I NEED IT
         private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
