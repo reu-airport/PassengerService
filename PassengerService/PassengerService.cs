@@ -30,6 +30,7 @@ namespace PassengerService
 
         private const long PASSENGER_GENERATION_PERIOD_MS = 5 * 1000;
         private const long PASSENGER_ACTIVITY_PERIOD_MS = 4 * 1000;
+        private const int TIME_FACTOR_REQUEST_PERIOD_MS = 5 * 1000;
 
         private const string INFO_PANEL_QUERY = "/api/v1/getAllAvailable";
         private const string TIME_QUERY = "api/v1/time";
@@ -59,7 +60,6 @@ namespace PassengerService
         private EventingBasicConsumer buyPassengerQueueConsumer;
         private EventingBasicConsumer refundPassengerQueueConsumer;
         private EventingBasicConsumer checkInToPassengerQueueConsumer;
-        private EventingBasicConsumer infoPanelConsumer;
 
         private readonly IConnection connection;
         private readonly IModel channel;
@@ -129,9 +129,32 @@ namespace PassengerService
 
         public void Run()
         {
-            var content = client.GetStringAsync(INFO_PANEL_QUERY);
+            //Task requesting time factor every TIME_FACTOR_REQUEST_PERIOD_MS miliseconds
+            Task.Run(() =>
+            {
+                try
+                {
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        var content = client.GetStringAsync(INFO_PANEL_QUERY);
 
-            time_factor = (JsonSerializer.Deserialize<Time>(content.Result)).Factor;
+                        var new_time_factor = (JsonSerializer.Deserialize<Time>(content.Result)).Factor;
+
+                        if (time_factor != new_time_factor)
+                        {
+                            time_factor = new_time_factor;
+                            Console.WriteLine($"New time factor: {time_factor}");
+                        }
+
+                        Thread.Sleep(TIME_FACTOR_REQUEST_PERIOD_MS);
+                    }
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+                
+            }, cancellationToken);           
 
             //Task generates passengers
             Task.Run(() =>
