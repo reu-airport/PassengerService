@@ -143,7 +143,7 @@ namespace PassengerService
                         if (time_factor != new_time_factor)
                         {
                             time_factor = new_time_factor;
-                            Console.WriteLine($"New time factor: {time_factor}");
+                            Console.WriteLine($"[{DateTime.Now}] New time factor: {time_factor}");
                         }
 
                         Thread.Sleep(TIME_FACTOR_REQUEST_PERIOD_MS);
@@ -151,7 +151,7 @@ namespace PassengerService
                 }
                 catch(Exception e)
                 {
-                    Console.WriteLine(e.Message);
+                    Console.WriteLine($"[{DateTime.Now}] {e.Message}");
                 }
                 
             }, cancellationToken);           
@@ -169,7 +169,7 @@ namespace PassengerService
 
                             newPassengers.Enqueue(passenger);
 
-                            Console.WriteLine($"A new passenger:\t{passenger.Id}");
+                            Console.WriteLine($"[{DateTime.Now}] A new passenger:\t{passenger.Id}");
                         }
 
                         Thread.Sleep(Convert.ToInt32(PASSENGER_GENERATION_PERIOD_MS / time_factor));
@@ -177,7 +177,7 @@ namespace PassengerService
                 }
                 catch(Exception e)
                 {
-                    Console.WriteLine(e.Message);
+                    Console.WriteLine($"[{DateTime.Now}] {e.Message}");
                 }
             }, cancellationToken);
 
@@ -221,7 +221,7 @@ namespace PassengerService
                 }
                 catch(Exception e)
                 {
-                    Console.WriteLine(e.Message);
+                    Console.WriteLine($"[{DateTime.Now}] {e.Message}");
                 }
             }, cancellationToken);
 
@@ -266,7 +266,7 @@ namespace PassengerService
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e.Message);
+                    Console.WriteLine($"[{DateTime.Now}] {e.Message}");
                 }
             }, cancellationToken);
 
@@ -291,11 +291,11 @@ namespace PassengerService
             try
             {
                 SendBuyTicketRequest(request);
-                Console.WriteLine($"Passenger {passenger.Id} tries to buy a ticket");
+                Console.WriteLine($"[{DateTime.Now}] Passenger {passenger.Id} tries to buy a ticket");
             }
             catch(Exception e)
             {
-                Console.WriteLine(e.Message);
+                Console.WriteLine($"[{DateTime.Now}] {e.Message}");
             }   
         }
 
@@ -308,11 +308,11 @@ namespace PassengerService
             try
             {
                 SendRefundTicketRequest(request);
-                Console.WriteLine($"Passenger {passenger.Id} tries to refund a ticket");
+                Console.WriteLine($"[{DateTime.Now}] Passenger {passenger.Id} tries to refund a ticket");
             }
             catch(Exception e)
             {
-                Console.WriteLine(e.Message);
+                Console.WriteLine($"[{DateTime.Now}] {e.Message}");
             }
         }
 
@@ -325,11 +325,11 @@ namespace PassengerService
             try
             {
                 SendCheckInRequest(request);
-                Console.WriteLine($"Passenger {passenger.Id} tries to check-in");
+                Console.WriteLine($"[{DateTime.Now}] Passenger {passenger.Id} tries to check-in");
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                Console.WriteLine($"[{DateTime.Now}] {e.Message}");
             }           
         }
 
@@ -342,11 +342,11 @@ namespace PassengerService
                 if (response.Status == BuyTicketResponseStatus.Success)
                 {
                     passenger.Ticket = response.Ticket;                   
-                    Console.WriteLine($"Passenger №{passenger.Id} has just bought a ticket");
+                    Console.WriteLine($"[{DateTime.Now}] Passenger №{passenger.Id} has just bought a ticket");
                 }
                 else
                 {
-                    Console.WriteLine($"Couldn't buy a ticket: passenger №{passenger.Id} already has a ticket");
+                    Console.WriteLine($"[{DateTime.Now}] Couldn't buy a ticket: passenger №{passenger.Id} already has a ticket");
                 }
 
                 passengersWithTickets.Enqueue(passenger);
@@ -365,22 +365,22 @@ namespace PassengerService
             {
                 if (response.IsCheckedIn)
                 {
-                    Console.WriteLine($"Passenger №{passenger.Id} has been registrated");
+                    Console.WriteLine($"[{DateTime.Now}] Passenger №{passenger.Id} has been registrated");
                     return;
                 }
                 else if (response.Reason == CheckInResponse.NO_TICKET)
                 {
-                    Console.WriteLine($"Couldn't check-in passenger №{passenger.Id}: no ticket");
+                    Console.WriteLine($"[{DateTime.Now}] Couldn't check-in passenger №{passenger.Id}: no ticket");
                     newPassengers.Enqueue(passenger);
                 }
                 else if (response.Reason == CheckInResponse.EARLY)
                 {
-                    Console.WriteLine($"Couldn't check-in passenger №{passenger.Id}: registration has not begun");
+                    Console.WriteLine($"[{DateTime.Now}] Couldn't check-in passenger №{passenger.Id}: registration has not begun");
                     passengersWithTickets.Enqueue(passenger);
                 }
                 else if (response.Reason == CheckInResponse.LATE)
                 {
-                    Console.WriteLine($"Couldn't check-in passenger №{passenger.Id}: too late");
+                    Console.WriteLine($"[{DateTime.Now}] Couldn't check-in passenger №{passenger.Id}: too late");
                     //A passenger goes home very sad
                 }
                 else
@@ -402,16 +402,16 @@ namespace PassengerService
                 if (response.IsRefunded)
                 {
                     passenger.Ticket = null;
-                    Console.WriteLine($"A Ticket of passenger №{passenger.Id} has been refunded");
+                    Console.WriteLine($"[{DateTime.Now}] A Ticket of passenger №{passenger.Id} has been refunded");
                 }
                 else if (passenger.Ticket != null)
                 {
                     passenger.Ticket = null;
-                    Console.WriteLine($"Could't refund a ticket of passenger №{passenger.Id}: too late");
+                    Console.WriteLine($"[{DateTime.Now}] Could't refund a ticket of passenger №{passenger.Id}: too late");
                 }
                 else
                 {
-                    Console.WriteLine($"Could't refund a ticket of passenger №{passenger.Id}: no ticket");
+                    Console.WriteLine($"[{DateTime.Now}] Could't refund a ticket of passenger №{passenger.Id}: no ticket");
                 }
 
                 newPassengers.Enqueue(passenger);
