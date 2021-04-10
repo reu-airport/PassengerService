@@ -3,6 +3,7 @@ using System.Text.Json;
 
 namespace PassengerService.DTO
 {
+    [Serializable]
     public class Flight
     {
         public Flight(Guid id, FlightDirection direction)
@@ -31,6 +32,7 @@ namespace PassengerService.DTO
         }
     }
 
+    [Serializable]
     public enum FlightDirection
     {
         Depurture,

@@ -3,17 +3,18 @@ using System.Text.Json;
 
 namespace PassengerService.DTO
 {
+    [Serializable]
     public class Time
     {
-        public Time(long time, long factor)
+        public Time(long factor, long time)
         {
-            Unix_time_ms = time;
-            Factor = factor;
+            this.time = time;
+            this.factor = factor;
         }
 
-        public long Unix_time_ms { get; init; }
+        public long factor { get; init; }
 
-        public long Factor { get; init; }
+        public long time { get; init; }
 
         public static Time Deserialize(byte[] body)
         {

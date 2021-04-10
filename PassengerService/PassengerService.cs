@@ -32,8 +32,8 @@ namespace PassengerService
         private const long PASSENGER_ACTIVITY_PERIOD_MS = 4 * 1000;
         private const int TIME_FACTOR_REQUEST_PERIOD_MS = 5 * 1000;
 
-        private const string INFO_PANEL_QUERY = "206.189.60.128:8083/api/v1/getAllAvailable";//TODO
-        private const string TIME_QUERY = "206.189.60.128:8083/api/v1/time";//TODO
+        private const string INFO_PANEL_QUERY = "https://info-panel222.herokuapp.com/api/v1/info-panel/all";//TODO
+        private const string TIME_QUERY = "http://206.189.60.128:8083/api/v1/time";//TODO
 
         //IDK WHY I NEED IT
         private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
@@ -133,29 +133,36 @@ namespace PassengerService
             //Task requesting time factor every TIME_FACTOR_REQUEST_PERIOD_MS miliseconds
             Task.Run(() =>
             {
-                try
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    while (!cancellationToken.IsCancellationRequested)
+                    try
                     {
-                        var content = client.GetStringAsync(INFO_PANEL_QUERY);
+                        var content = client.GetStringAsync(TIME_QUERY);
 
                         Console.WriteLine($"[{DateTime.Now}] Time is being requested");
-                        var new_time_factor = (JsonSerializer.Deserialize<Time>(content.Result)).Factor;
+                        Console.WriteLine(content.Result);
+                        var time = JsonSerializer.Deserialize<Time>(content.Result);
+
+                        var dateTime = DateTimeOffset.FromUnixTimeMilliseconds(time.time);
+                        Console.WriteLine($"[{DateTime.Now}] Simulation time:\t{dateTime}");
+
+                        var new_time_factor = time.factor;
 
                         if (time_factor != new_time_factor)
                         {
                             time_factor = new_time_factor;
                             Console.WriteLine($"[{DateTime.Now}] New time factor: {time_factor}");
                         }
-
-                        Thread.Sleep(TIME_FACTOR_REQUEST_PERIOD_MS);
                     }
-                }
-                catch(Exception e)
-                {
-                    Console.WriteLine($"[{DateTime.Now}] {e.Message}");
-                }
-                
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"[{DateTime.Now}] {e.Message}");
+                    }
+                    finally
+                    {
+                        Thread.Sleep(TIME_FACTOR_REQUEST_PERIOD_MS);
+                    }   
+                }              
             }, cancellationToken);           
 
             //Task generates passengers
@@ -186,14 +193,14 @@ namespace PassengerService
             //Task sends new passengers do something
             Task.Run(() =>
             {
-                try
+                while (!cancellationToken.IsCancellationRequested)
                 {
                     Thread.Sleep(Convert.ToInt32(PASSENGER_ACTIVITY_PERIOD_MS / time_factor));
 
-                    while (!cancellationToken.IsCancellationRequested)
+                    try
                     {
                         if (random.NextDouble() <= PASSENGER_ACTIVITY_CHANCE)
-                        {                           
+                        {
                             if (newPassengers.TryDequeue(out var passenger))
                             {
                                 if (random.NextDouble() <= DO_NORMAL_ACTION_CHANCE)
@@ -217,24 +224,24 @@ namespace PassengerService
                             else
                             {
                                 throw new Exception("Cannot dequeue a new passenger");
-                            }      
+                            }
                         }
                     }
-                }
-                catch(Exception e)
-                {
-                    Console.WriteLine($"[{DateTime.Now}] {e.Message}");
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"[{DateTime.Now}] {e.Message}");
+                    }
                 }
             }, cancellationToken);
 
             //Task sends passengers with tickets do something
             Task.Run(() =>
             {
-                try
+                while (!cancellationToken.IsCancellationRequested)
                 {
                     Thread.Sleep(Convert.ToInt32(PASSENGER_ACTIVITY_PERIOD_MS / time_factor));
 
-                    while (!cancellationToken.IsCancellationRequested)
+                    try
                     {
                         if (random.NextDouble() <= PASSENGER_ACTIVITY_CHANCE)
                         {
@@ -262,13 +269,12 @@ namespace PassengerService
                             {
                                 throw new Exception("Cannot dequeue a passenger with ticket");
                             }
-
                         }
                     }
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine($"[{DateTime.Now}] {e.Message}");
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"[{DateTime.Now}] {e.Message}");
+                    }
                 }
             }, cancellationToken);
 
@@ -278,7 +284,7 @@ namespace PassengerService
 
         private void BuyTicketAction(Passenger passenger)
         {
-            var content = client.GetStringAsync(TIME_QUERY);
+            var content = client.GetStringAsync(INFO_PANEL_QUERY);
 
             availableFlights = JsonSerializer.Deserialize<Flight[]>(content.Result);
 
