@@ -23,13 +23,13 @@ namespace PassengerService
             CheckInToPassengerQueue,
         }
 
-        private const double PASSENGER_GENERATION_CHANCE = 0.5;
-        private const double PASSENGER_ACTIVITY_CHANCE = 0.5;
+        private const double PASSENGER_GENERATION_CHANCE = 0.6;
+        private const double PASSENGER_ACTIVITY_CHANCE = 0.6;
         private const double REFUND_TICKET_CHANCE = 0.05;
         private const double DO_NORMAL_ACTION_CHANCE = 0.95;
 
-        private const long PASSENGER_GENERATION_PERIOD_MS = 5 * 1000;
-        private const long PASSENGER_ACTIVITY_PERIOD_MS = 4 * 1000;
+        private const long PASSENGER_GENERATION_PERIOD_MS = 4 * 1000;
+        private const long PASSENGER_ACTIVITY_PERIOD_MS = 3 * 1000;
         private const int TIME_FACTOR_REQUEST_PERIOD_MS = 5 * 1000;
 
         private const string INFO_PANEL_QUERY = "https://info-panel222.herokuapp.com/api/v1/info-panel/all";//TODO
@@ -45,7 +45,7 @@ namespace PassengerService
         private ConcurrentQueue<Passenger> passengersWithTickets = new ConcurrentQueue<Passenger>();
         private ConcurrentDictionary<Guid, Passenger> waitingForResponsePassengers = new ConcurrentDictionary<Guid, Passenger>();
 
-        private Flight[] availableFlights;
+        private List<Flight> availableFlights;
 
         private readonly Dictionary<Queues, string> queues = new Dictionary<Queues, string>()
         {
@@ -53,8 +53,8 @@ namespace PassengerService
             [Queues.BuyPassengerQueue] = "BuyPassengerQueue",
             [Queues.PassengerRefundQueue] = "CashboxRefundTicket",
             [Queues.RefundPassengerQueue] = "RefundPassengerQueue",
-            [Queues.PassengerToCheckInQueue] = "PassengerToCheckInQueue",
-            [Queues.CheckInToPassengerQueue] = "Ticket",
+            [Queues.PassengerToCheckInQueue] = "CheckIn",
+            [Queues.CheckInToPassengerQueue] = "CheckInToPassengerQueue",
         };
 
         private EventingBasicConsumer buyPassengerQueueConsumer;
@@ -118,6 +118,7 @@ namespace PassengerService
             checkInToPassengerQueueConsumer = new EventingBasicConsumer(channel);
             checkInToPassengerQueueConsumer.Received += (model, ea) =>
             {
+                Console.WriteLine("CheckIn response");
                 var body = ea.Body.ToArray();
                 var response = CheckInResponse.Deserialize(body);
                 HandleCheckInResponse(response);
@@ -139,12 +140,9 @@ namespace PassengerService
                     {
                         var content = client.GetStringAsync(TIME_QUERY);
 
-                        Console.WriteLine($"[{DateTime.Now}] Time is being requested");
-                        Console.WriteLine(content.Result);
                         var time = JsonSerializer.Deserialize<Time>(content.Result);
 
                         var dateTime = DateTimeOffset.FromUnixTimeMilliseconds(time.time);
-                        Console.WriteLine($"[{DateTime.Now}] Simulation time:\t{dateTime}");
 
                         var new_time_factor = time.factor;
 
@@ -245,7 +243,7 @@ namespace PassengerService
                     {
                         if (random.NextDouble() <= PASSENGER_ACTIVITY_CHANCE)
                         {
-                            if (newPassengers.TryDequeue(out var passenger))
+                            if (passengersWithTickets.TryDequeue(out var passenger))
                             {
                                 if (random.NextDouble() <= DO_NORMAL_ACTION_CHANCE)
                                 {
@@ -286,26 +284,29 @@ namespace PassengerService
         {
             var content = client.GetStringAsync(INFO_PANEL_QUERY);
 
-            availableFlights = JsonSerializer.Deserialize<Flight[]>(content.Result);
+            availableFlights = JsonSerializer.Deserialize<List<Flight>>(content.Result);
 
-            var flight = availableFlights[random.Next(availableFlights.Length)];
-
-            var request = new BuyTicketRequest(
-                        passengerId: passenger.Id,
-                        flightId: flight.Id,
-                        hasBaggage: passenger.HasBaggage,
-                        isVip: passenger.IsVip,
-                        timeStamp: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-
-            try
+            if (availableFlights.Count != 0)
             {
-                SendBuyTicketRequest(request);
-                Console.WriteLine($"[{DateTime.Now}] Passenger {passenger.Id} tries to buy a ticket");
+                var flight = availableFlights[random.Next(availableFlights.Count)];
+
+                var request = new BuyTicketRequest(
+                            passengerId: passenger.Id,
+                            flightId: flight.Id,
+                            hasBaggage: passenger.HasBaggage,
+                            isVip: passenger.IsVip,
+                            timeStamp: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+
+                try
+                {
+                    SendBuyTicketRequest(request);
+                    Console.WriteLine($"[{DateTime.Now}] Passenger {passenger.Id} tries to buy a ticket {flight.Id}");
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"[{DateTime.Now}] {e.Message}");
+                }
             }
-            catch(Exception e)
-            {
-                Console.WriteLine($"[{DateTime.Now}] {e.Message}");
-            }   
         }
 
         private void RefundTicketAction(Passenger passenger)
@@ -350,10 +351,10 @@ namespace PassengerService
             Guid passengerId = response.PassengerId;
             if (waitingForResponsePassengers.TryRemove(passengerId, out var passenger))
             {
-                if (response.Status == BuyTicketResponseStatus.Success)
+                if (response.Ticket != null)
                 {
                     passenger.Ticket = response.Ticket;                   
-                    Console.WriteLine($"[{DateTime.Now}] Passenger №{passenger.Id} has just bought a ticket");
+                    Console.WriteLine($"[{DateTime.Now}] Passenger №{passenger.Id} has just bought a ticket {passenger.Ticket}");
                 }
                 else
                 {
@@ -367,14 +368,16 @@ namespace PassengerService
                 throw new Exception("Cannot remove a waiting passenger");
             }
         }
-
+        
         //Check-in response processing
         private void HandleCheckInResponse(CheckInResponse response)
         {
+            Console.WriteLine(response.IsChecked);
+            Console.WriteLine(response.Reason);
             Guid passengerId = response.PassengerId;
             if (waitingForResponsePassengers.TryRemove(passengerId, out var passenger))
             {
-                if (response.IsCheckedIn)
+                if (response.IsChecked)
                 {
                     Console.WriteLine($"[{DateTime.Now}] Passenger №{passenger.Id} has been registrated");
                     return;

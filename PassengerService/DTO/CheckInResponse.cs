@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace PassengerService.DTO
 {
@@ -14,17 +15,20 @@ namespace PassengerService.DTO
 
         public const string NO_TICKET = "No ticket";
 
-        public CheckInResponse(Guid passengerId, bool isCheckedIn, string reason)
+        public CheckInResponse(Guid passengerId, bool isChecked, string reason)
         {
             PassengerId = passengerId;
-            IsCheckedIn = isCheckedIn;
+            IsChecked = isChecked;
             Reason = reason;
         }
 
+        [JsonPropertyName("PassengerId")]
         public Guid PassengerId { get; init; }
 
-        public bool IsCheckedIn { get; init; }
+        [JsonPropertyName("IsChecked")]
+        public bool IsChecked { get; init; }
 
+        [JsonPropertyName("Reason")]
         public string Reason { get; init; }
 
         public static CheckInResponse Deserialize(byte[] body)

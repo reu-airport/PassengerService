@@ -12,7 +12,7 @@ namespace PassengerService.DTO
         {
             PassengerId = passengerId;
             FlightId = flightId;
-            HasBaggae = hasBaggage;
+            HasBaggage = hasBaggage;
             IsVip = isVip;
             TimeStamp = timeStamp;
         }
@@ -21,7 +21,7 @@ namespace PassengerService.DTO
 
         public Guid FlightId { get; init; }
 
-        public bool HasBaggae { get; init; }
+        public bool HasBaggage { get; init; }
 
         public bool IsVip { get; init; }
 

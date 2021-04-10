@@ -7,17 +7,13 @@ namespace PassengerService.DTO
 
     public class BuyTicketResponse
     {
-        public BuyTicketResponse(Guid passengerId, BuyTicketResponseStatus status, FlightTicket ticket)
+        public BuyTicketResponse(Guid passengerId, FlightTicket ticket)
         {
             PassengerId = passengerId;
-            Status = status;
             Ticket = ticket;
         }
-
+        
         public Guid PassengerId { get; init; }
-
-        //might be useless
-        public BuyTicketResponseStatus Status { get; init; }
 
         public FlightTicket Ticket { get; init; }
 
@@ -25,12 +21,5 @@ namespace PassengerService.DTO
         {
             return JsonSerializer.Deserialize<BuyTicketResponse>(body);
         }
-    }
-
-    //might be useless
-    public enum BuyTicketResponseStatus
-    {
-        Success,
-        Error
     }
 }
