@@ -289,7 +289,7 @@ namespace PassengerService
                         flightId: flight.Id,
                         hasBaggage: passenger.HasBaggage,
                         isVip: passenger.IsVip,
-                        time: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                        timeStamp: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
             try
             {
@@ -307,7 +307,7 @@ namespace PassengerService
             var request = new RefundTicketRequest(
                 passengerId: passenger.Id,
                 ticket: passenger.Ticket,
-                time: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                timeStamp: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
             try
             {
@@ -325,7 +325,7 @@ namespace PassengerService
             var request = new CheckInRequest(
                 passengerId: passenger.Id,
                 ticket: passenger.Ticket,
-                time: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                timeStamp: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
             try
             {

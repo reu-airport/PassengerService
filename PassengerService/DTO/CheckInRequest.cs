@@ -7,18 +7,18 @@ namespace PassengerService.DTO
 
     public class CheckInRequest
     {
-        public CheckInRequest(Guid passengerId, FlightTicket ticket, long time)
+        public CheckInRequest(Guid passengerId, FlightTicket ticket, long timeStamp)
         {
             PassengerId = passengerId;
             Ticket = ticket;
-            Time = time;
+            TimeStamp = timeStamp;
         }
 
         public Guid PassengerId { get; init; }
 
         public FlightTicket Ticket { get; init; }
 
-        public long Time { get; init; }
+        public long TimeStamp { get; init; }
 
         public byte[] Serialize()
         {
