@@ -7,19 +7,18 @@ namespace PassengerService.DTO
 
     public class RefundTicketRequest
     {
-        public RefundTicketRequest(Guid passengerId, FlightTicket ticket)
+        public RefundTicketRequest(Guid passengerId, FlightTicket ticket, long time)
         {
             PassengerId = passengerId;
             Ticket = ticket;
-
-            //TIMESTAMP
+            Time = time;
         }
 
         public Guid PassengerId { get; init; }
 
         public FlightTicket Ticket { get; init; }
 
-        //TIMESTAMP
+        public long Time { get; init; }
 
         public byte[] Serialize()
         {

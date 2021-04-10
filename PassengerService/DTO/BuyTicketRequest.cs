@@ -8,14 +8,13 @@ namespace PassengerService.DTO
 
     public class BuyTicketRequest
     {
-        public BuyTicketRequest(Guid passengerId, Guid flightId, bool hasBaggage, bool isVip)
+        public BuyTicketRequest(Guid passengerId, Guid flightId, bool hasBaggage, bool isVip, long time)
         {
             PassengerId = passengerId;
             FlightId = flightId;
             HasBaggae = hasBaggage;
             IsVip = isVip;
-
-            //TIMESTAMP
+            Time = time;
         }
 
         public Guid PassengerId { get; init; }
@@ -26,7 +25,7 @@ namespace PassengerService.DTO
 
         public bool IsVip { get; init; }
 
-        //TIMESTAMP
+        public long Time { get; init; }
 
         public byte[] Serialaize()
         {

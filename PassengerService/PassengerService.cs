@@ -32,8 +32,8 @@ namespace PassengerService
         private const long PASSENGER_ACTIVITY_PERIOD_MS = 4 * 1000;
         private const int TIME_FACTOR_REQUEST_PERIOD_MS = 5 * 1000;
 
-        private const string INFO_PANEL_QUERY = "/api/v1/getAllAvailable";//TODO
-        private const string TIME_QUERY = "api/v1/time";//TODO
+        private const string INFO_PANEL_QUERY = "206.189.60.128:8083/api/v1/getAllAvailable";//TODO
+        private const string TIME_QUERY = "206.189.60.128:8083/api/v1/time";//TODO
 
         //IDK WHY I NEED IT
         private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
@@ -76,8 +76,9 @@ namespace PassengerService
 
             var factory = new ConnectionFactory()
             {
-                Uri = new Uri("amqps://avfepwdu:SS4fTAg36RK1hPQAUnyC6TH-4Mf3uyJo@fox.rmq.cloudamqp.com/avfepwdu")
-                //Uri = new Uri("amqps://sznpfban:Tx-Pxw7Hnr3qYpewSDnTEXAearxBt21h@cow.rmq2.cloudamqp.com/sznpfban")              
+                HostName = "206.189.60.128",
+                UserName = "guest",
+                Password = "guest"
             };
 
             connection = factory.CreateConnection();
@@ -138,6 +139,7 @@ namespace PassengerService
                     {
                         var content = client.GetStringAsync(INFO_PANEL_QUERY);
 
+                        Console.WriteLine($"[{DateTime.Now}] Time is being requested");
                         var new_time_factor = (JsonSerializer.Deserialize<Time>(content.Result)).Factor;
 
                         if (time_factor != new_time_factor)
@@ -286,7 +288,8 @@ namespace PassengerService
                         passengerId: passenger.Id,
                         flightId: flight.Id,
                         hasBaggage: passenger.HasBaggage,
-                        isVip: passenger.IsVip);
+                        isVip: passenger.IsVip,
+                        time: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
             try
             {
@@ -303,7 +306,8 @@ namespace PassengerService
         {
             var request = new RefundTicketRequest(
                 passengerId: passenger.Id,
-                ticket: passenger.Ticket);
+                ticket: passenger.Ticket,
+                time: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
             try
             {
@@ -320,7 +324,8 @@ namespace PassengerService
         {
             var request = new CheckInRequest(
                 passengerId: passenger.Id,
-                ticket: passenger.Ticket);
+                ticket: passenger.Ticket,
+                time: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
             try
             {
